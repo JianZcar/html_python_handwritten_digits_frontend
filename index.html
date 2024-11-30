@@ -81,6 +81,13 @@
             width: 100%;
         }
 
+        #processed-image {
+            margin-top: 20px;
+            width: 280px;
+            height: 280px;
+            display: none; /* Initially hidden */
+        }
+
         h1 {
             font-size: 2.5em;
             color: #00bcd4; /* Cyan color */
@@ -108,6 +115,8 @@
             <input type="range" id="brush-size" min="1" max="100" value="10">
             <input type="range" id="eraser-size" min="1" max="100" value="10">
             <div id="prediction">Prediction: N/A</div>
+            <!-- Processed Image Display -->
+            <img id="processed-image" src="" alt="Processed Image"/>
         </div>
     </div>
 
@@ -120,6 +129,7 @@
         let isEraser = false;
         let lastX, lastY;
         let drawing = false;
+        let isThrottling = false;
 
         // Set canvas background to white
         ctx.fillStyle = 'white';
@@ -142,7 +152,15 @@
                 ctx.fill();
                 lastX = x;
                 lastY = y;
-                sendImageToAPI();
+
+                // Throttle the API call
+                if (!isThrottling) {
+                    isThrottling = true;
+                    setTimeout(() => {
+                        sendImageToAPI();
+                        isThrottling = false;
+                    }, 100);  // Adjust the timeout (ms) as necessary for smoothness
+                }
             }
         });
 
@@ -184,7 +202,15 @@
                     processData: false,
                     contentType: false,
                     success: (response) => {
+                        // Update the prediction text
                         document.getElementById('prediction').innerHTML = 'Prediction: ' + response.prediction;
+
+                        // Display the processed image
+                        if (response.processed_image) {
+                            let imgElement = document.getElementById('processed-image');
+                            imgElement.src = 'data:image/png;base64,' + response.processed_image;
+                            imgElement.style.display = 'block';  // Show the image element
+                        }
                     },
                     error: (xhr, status, error) => {
                         console.error(xhr, status, error);
