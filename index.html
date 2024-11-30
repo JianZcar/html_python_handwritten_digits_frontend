@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Handwritten Digit Recognition</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f5f5f5; /* Light background */
+            color: #333333; /* Dark text for contrast */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            padding: 20px;
+        }
+
+        .container {
+            display: flex;
+            justify-content: space-between;
+            width: 100%;
+            max-width: 1200px;
+            align-items: flex-start;
+        }
+
+        #canvas {
+            border: 2px solid #00bcd4;
+            border-radius: 10px;
+            background-color: white;
+            cursor: crosshair;
+            flex: 1;
+            margin-right: 30px;
+        }
+
+        .controls {
+            width: 250px;
+            background-color: #ffffff;
+            border: 2px solid #00bcd4;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .controls button,
+        .controls input[type="range"] {
+            margin: 10px 0;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            background-color: #00bcd4;
+            color: white;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        .controls button:hover,
+        .controls input[type="range"]:hover {
+            background-color: #0097a7;
+        }
+
+        .controls input[type="range"] {
+            width: 200px;
+        }
+
+        #prediction {
+            margin-top: 20px;
+            font-size: 1.2rem;
+            color: #00bcd4;
+            font-weight: bold;
+            padding: 10px;
+            border-radius: 5px;
+            background-color: #e0f7fa; /* Light cyan background for the prediction box */
+            border: 1px solid #00bcd4;
+            text-align: center;
+            width: 100%;
+        }
+
+        h1 {
+            font-size: 2.5em;
+            color: #00bcd4; /* Cyan color */
+            margin-bottom: 20px;
+            text-align: center;
+            width: 100%;
+        }
+
+        .container {
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div>
+            <h1>Handwritten Digit Recognition</h1>
+            <canvas id="canvas" width="720" height="720"></canvas>
+        </div>
+        <div class="controls">
+            <button id="clear-btn">Clear</button>
+            <button id="eraser-btn">Eraser</button>
+            <input type="range" id="brush-size" min="1" max="100" value="10">
+            <input type="range" id="eraser-size" min="1" max="100" value="10">
+            <div id="prediction">Prediction: N/A</div>
+        </div>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script>
+        let canvas = document.getElementById('canvas');
+        let ctx = canvas.getContext('2d');
+        let brushSize = 70;
+        let eraserSize = 70;
+        let isEraser = false;
+        let lastX, lastY;
+        let drawing = false;
+
+        // Set canvas background to white
+        ctx.fillStyle = 'white';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        // Draw on canvas
+        canvas.addEventListener('mousedown', (e) => {
+            drawing = true;
+            lastX = e.offsetX;
+            lastY = e.offsetY;
+        });
+
+        canvas.addEventListener('mousemove', (e) => {
+            if (drawing) {
+                let x = e.offsetX;
+                let y = e.offsetY;
+                ctx.beginPath();
+                ctx.arc(x, y, brushSize / 2, 0, 2 * Math.PI);
+                ctx.fillStyle = isEraser ? 'white' : 'black'; // Black for drawing
+                ctx.fill();
+                lastX = x;
+                lastY = y;
+                sendImageToAPI();
+            }
+        });
+
+        canvas.addEventListener('mouseup', () => {
+            drawing = false;
+        });
+
+        // Clear canvas
+        document.getElementById('clear-btn').addEventListener('click', () => {
+            ctx.fillStyle = 'white';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            sendImageToAPI();
+        });
+
+        // Toggle eraser
+        document.getElementById('eraser-btn').addEventListener('click', () => {
+            isEraser = !isEraser;
+        });
+
+        // Update brush size
+        document.getElementById('brush-size').addEventListener('input', (e) => {
+            brushSize = parseInt(e.target.value);
+        });
+
+        // Update eraser size
+        document.getElementById('eraser-size').addEventListener('input', (e) => {
+            eraserSize = parseInt(e.target.value);
+        });
+
+        // Send image to API
+        function sendImageToAPI() {
+            canvas.toBlob((blob) => {
+                let formData = new FormData();
+                formData.append('file', blob);
+                $.ajax({
+                    type: 'POST',
+                    url: 'http://127.0.0.1:5000/predict',
+                    data: formData,
+                    processData: false,
+                    contentType: false,
+                    success: (response) => {
+                        document.getElementById('prediction').innerHTML = 'Prediction: ' + response.prediction;
+                    },
+                    error: (xhr, status, error) => {
+                        console.error(xhr, status, error);
+                    }
+                });
+            });
+        }
+
+        // Update slider values on page load
+        window.addEventListener('load', () => {
+            document.getElementById('brush-size').value = brushSize;
+            document.getElementById('eraser-size').value = eraserSize;
+        });
+    </script>
+</body>
+</html>
